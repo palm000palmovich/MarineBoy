@@ -1,8 +1,10 @@
 package org.gaming.demo.controllers;
 
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.gaming.demo.component.JwtUtil;
+import org.gaming.demo.dto.JwtResponse;
 import org.gaming.demo.dto.LoginDto;
 import org.gaming.demo.dto.RegisterDto;
 import org.gaming.demo.exceptions.UserAlreadyRegisteredException;
@@ -28,7 +30,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<?> createAuthenticationToken(@RequestBody LoginDto login) throws Exception {
+    public ResponseEntity<?> createAuthenticationToken(@Valid @RequestBody LoginDto login) throws Exception {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(login.getUserName(), login.getPassword())
@@ -39,14 +41,13 @@ public class AuthController {
         }
 
         final User user = userService.loadUserByUsername(login.getUserName());
-        final String jwt = jwtUtil.generateToken(user);
-
-        logger.info("Полученный jwt: {}", jwt);
-        return ResponseEntity.ok().body("Success log-in.");
+        final JwtResponse jwtResponse = new JwtResponse(jwtUtil.generateToken(user));
+        logger.info("Полученный jwt: {}", jwtResponse.toString());
+        return ResponseEntity.ok(jwtResponse);
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterDto registerDto) {
+    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterDto registerDto) {
         try {
             return ResponseEntity.ok(userService.registerNewUser(registerDto));
         } catch (UserAlreadyRegisteredException exception){

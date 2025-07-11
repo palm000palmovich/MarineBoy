@@ -43,8 +43,7 @@ public class UserService implements UserDetailsService {
         if (redisCacheUtils.hasKey(fullKey)) {
             UserFullInfo userFullInfo = redisCacheUtils
                     .getValue(fullKey, UserFullInfo.class);
-            logger.info("Юзер с username {} найден в кеше: {}",
-                    userName, userFullInfo.toString());
+            logger.info("Юзер с username {} найден в кеше", userName);
             loggedUser = userMapper.dtoToEntity(userFullInfo);
             return loggedUser;
         }

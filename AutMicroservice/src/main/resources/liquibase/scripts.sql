@@ -15,3 +15,6 @@ CREATE TABLE users(
 --changeset IvanTyapkin:2
 ALTER TABLE users
 ADD COLUMN role VARCHAR(255);
+
+--changeset IvanTyapkin:3
+CREATE INDEX user_name_index ON users (username);

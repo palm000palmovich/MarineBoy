@@ -40,6 +40,7 @@ public class JwtUtil {
 
     public String generateToken(User user) {
         return Jwts.builder()
+                .setId(user.getUserId().toString())
                 .setSubject(user.getUsername())
                 .claim("role", user.getRole().name())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))

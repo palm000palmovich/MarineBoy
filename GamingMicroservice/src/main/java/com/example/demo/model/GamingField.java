@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,10 +17,12 @@ public class GamingField {
     private Long id;
     @ManyToOne
     @JoinColumn(name = "gamer_id", nullable = false)
+    @JsonBackReference
     private Gamer gamer;
     @Column(name = "field_data", columnDefinition = "TEXT")
     private String fieldData;
     @ManyToOne
     @JoinColumn(name = "game_session_id", nullable = false)
+    @JsonBackReference
     private GameSession gameSession;
 }

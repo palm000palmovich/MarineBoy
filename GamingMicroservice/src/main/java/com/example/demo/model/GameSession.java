@@ -2,6 +2,7 @@ package com.example.demo.model;
 
 import com.example.demo.enums.GameStatus;
 import com.example.demo.enums.GameType;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,9 +21,11 @@ public class GameSession {
     private Long id;
     @ManyToOne
     @JoinColumn(name = "player_one_id", nullable = false)
+    @JsonBackReference
     private Gamer playerOne;
     @ManyToOne
     @JoinColumn(name = "player_two_id")
+    @JsonBackReference
     private Gamer playerTwo;
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
@@ -36,6 +39,7 @@ public class GameSession {
     private LocalDateTime finishedAt;
     @ManyToOne
     @JoinColumn(name = "winner_id")
+    @JsonBackReference
     private Gamer winner;
 
     public void startGame() {

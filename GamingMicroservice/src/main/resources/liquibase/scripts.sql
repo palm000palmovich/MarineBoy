@@ -28,3 +28,7 @@ CREATE TABLE gaming_fields (
     CONSTRAINT fk_gamer FOREIGN KEY (gamer_id) REFERENCES gamers(id),
     CONSTRAINT fk_game_session FOREIGN KEY (game_session_id) REFERENCES game_sessions(id)
 );
+
+--changeset IvanTyapkin:4
+CREATE INDEX user_nickname_index ON gamers (nickname);
+CREATE INDEX game_session_status_index ON game_sessions (status);

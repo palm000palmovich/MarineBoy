@@ -1,6 +1,5 @@
 package org.gaming.demo.controllers;
 
-
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.gaming.demo.component.JwtUtil;
@@ -55,4 +54,6 @@ public class AuthController {
             return ResponseEntity.badRequest().body(exception.getMessage());
         }
     }
+
+    //Сюда логику передачи токена по ресту после login
 }

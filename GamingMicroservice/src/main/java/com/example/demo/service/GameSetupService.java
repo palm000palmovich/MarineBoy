@@ -23,12 +23,12 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class GameService {
+public class GameSetupService {
     private final GamerRepository gamerRepository;
     private final GameSessionRepository gameSessionRepository;
     private final GamingFieldRepository gamingFieldRepository;
 
-    private Logger logger = LoggerFactory.getLogger(GameService.class);
+    private Logger logger = LoggerFactory.getLogger(GameSetupService.class);
 
     public GameSession createGame(String userName, GameType type) {
         logger.info("Создание игровой сессии: userName - {}, gameType - {}",
@@ -106,6 +106,15 @@ public class GameService {
         field.setFieldData(serializedField);
         gamingFieldRepository.save(field);
         logger.info("Поле успешно создано.");
+    }
+
+    public ShipDistribution getPlayersField(Long sessionId, String nickName) {
+        Gamer gamer = gamerRepository.findByNickname(nickName)
+                .orElseThrow(() -> new UserNameNotFoundException(nickName));
+        GamingField gamingField = gamingFieldRepository.findFieldByGamerIdAndSessionId(gamer.getId(), sessionId)
+                .orElseThrow(() -> new RuntimeException("Поле не найдено."));
+
+        return new Gson().fromJson(gamingField.getFieldData(), ShipDistribution.class);
     }
 
 

@@ -24,6 +24,7 @@ import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
+//TODO тебя надо жестко оптимизировать
 public class GameProcessUtils {
     private final GameSessionRepository gameSessionRepository;
     private final GamingFieldRepository gamingFieldRepository;
@@ -34,7 +35,7 @@ public class GameProcessUtils {
 
     private final Logger logger = LoggerFactory.getLogger(GameProcessUtils.class);
 
-    public GameResultDto processShot(Long sessionId, Gamer currentPlayer,
+    public GameResultDto processShot(GameSession gameSession, Gamer currentPlayer,
                                      GamingField opponentField, ShipDistribution distribution,
                                      int x, int y) {
         if (!isWithinBounds(x, y)) {
@@ -47,11 +48,11 @@ public class GameProcessUtils {
         if (isMiss(field, x, y)) {
             return handleMiss(opponentField, distribution, field, x, y);
         } else {
-            return handleHit(sessionId, currentPlayer, opponentField, distribution, field, x, y);
+            return handleHit(gameSession, currentPlayer, opponentField, distribution, field, x, y);
         }
     }
 
-    private GameResultDto handleHit(Long sessionId, Gamer currentPlayer,
+    private GameResultDto handleHit(GameSession gameSession, Gamer currentPlayer,
                                     GamingField opponentField, ShipDistribution distribution,
                                     String[][] field, int x, int y) {
         field[x][y] = HIT_CELL;
@@ -63,7 +64,7 @@ public class GameProcessUtils {
 
         if (isShipDestroyed) {
             if (isAllShipsDestroyed(field)) {
-                declareWinner(sessionId, currentPlayer);
+                declareWinner(gameSession, currentPlayer);
                 return new GameResultDto(MoveResult.WIN, true, currentPlayer.getNickname());
             }
             return new GameResultDto(MoveResult.KILL, false, null);
@@ -127,11 +128,9 @@ public class GameProcessUtils {
         gamingFieldRepository.save(field);
     }
 
-    private void declareWinner(Long sessionId, Gamer winner) {
-        GameSession session = gameSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalStateException("Game session not found"));
-        session.finishGame(winner);
-        gameSessionRepository.save(session);
+    private void declareWinner(GameSession gameSession, Gamer winner) {
+        gameSession.finishGame(winner);
+        gameSessionRepository.save(gameSession);
     }
 
 

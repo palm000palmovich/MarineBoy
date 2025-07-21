@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.component.GameProcessUtils;
+import com.example.demo.component.RedisCacheUtils;
 import com.example.demo.dto.GameResultDto;
 import com.example.demo.dto.ShipDistribution;
 import com.example.demo.enums.GameStatus;
@@ -8,7 +9,6 @@ import com.example.demo.model.GameSession;
 import com.example.demo.model.Gamer;
 import com.example.demo.model.GamingField;
 import com.example.demo.repository.GameSessionRepository;
-import com.example.demo.repository.GamerRepository;
 import com.example.demo.repository.GamingFieldRepository;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +18,12 @@ import org.slf4j.Logger;
 
 @Service
 @RequiredArgsConstructor
+//TODO тебя надо жестко оптимизировать
 public class GameProcessService {
     private final GameSessionRepository gameSessionRepository;
     private final GamingFieldRepository gamingFieldRepository;
     private final GameProcessUtils gameProcessUtils1;
+    private final RedisCacheUtils redisCacheUtils;
 
     private Logger logger = LoggerFactory.getLogger(GameProcessService.class);
 
@@ -33,7 +35,7 @@ public class GameProcessService {
             throw new RuntimeException("Game is not in progress");
         }
 
-        Gamer currentPlayer = findPlayerInGame(gameSession, nickname);
+        Gamer currentPlayer = findPlayerInGame(gameSession, nickname); //TODO кеш
         Gamer opponent = getOpponent(gameSession, currentPlayer);
         logger.info("Ход игрока {} на ({},{})", nickname, x, y);
 
@@ -46,7 +48,7 @@ public class GameProcessService {
 
         logger.info("Выстрел по клетке ({},{}), содержимое: {}", x, y, field[x][y]);
 
-        return gameProcessUtils1.processShot(sessionId, currentPlayer, opponentField, distribution, x, y);
+        return gameProcessUtils1.processShot(gameSession, currentPlayer, opponentField, distribution, x, y);
     }
 
     private Gamer getOpponent(GameSession gameSession, Gamer currentPlayer) {

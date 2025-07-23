@@ -16,4 +16,4 @@ id сессии, nickName игрока и тело с расстановкой �
    }
 
 22.07.2025 00:51 - [https://www.youtube.com/watch?v=2la_vU0Uhxk&list=RD2la_vU0Uhxk&start_radio=1](https://www.youtube.com/watch?v=2la_vU0Uhxk&list=RD2la_vU0Uhxk&start_radio=1)
-22.07.2025 16:30 Я великий оптимизатор, когда только познакомился с редисом! 
+22.07.2025 16:30 Я великий оптимизатор, I know freaking Redis. 

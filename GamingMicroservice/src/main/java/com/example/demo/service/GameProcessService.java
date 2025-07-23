@@ -1,12 +1,12 @@
 package com.example.demo.service;
 
-import com.example.demo.component.GameProcessUtils;
 import com.example.demo.component.RedisCacheUtils;
-import com.example.demo.dto.GameResultDto;
-import com.example.demo.dto.LastShotResult;
-import com.example.demo.dto.ShipDistribution;
+import com.example.demo.dto.*;
 import com.example.demo.enums.GameStatus;
+import com.example.demo.enums.MoveResult;
+import com.example.demo.exceptions.SessionNotFoundException;
 import com.example.demo.exceptions.UncorrectUserException;
+import com.example.demo.exceptions.WrongCoordinatesException;
 import com.example.demo.model.GameSession;
 import com.example.demo.model.Gamer;
 import com.example.demo.model.GamingField;
@@ -19,13 +19,14 @@ import org.springframework.stereotype.Service;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
+import java.time.LocalDateTime;
+import java.util.*;
+
 @Service
 @RequiredArgsConstructor
-//TODO тебя надо жестко оптимизировать
 public class GameProcessService {
     private final GameSessionRepository gameSessionRepository;
     private final GamingFieldRepository gamingFieldRepository;
-    private final GameProcessUtils gameProcessUtils1;
     private final RedisCacheUtils redisCacheUtils;
 
     @Value("${spring.cache.redis.verySimpleShit.time-to-lived}")
@@ -36,10 +37,12 @@ public class GameProcessService {
     private Logger logger = LoggerFactory.getLogger(GameProcessService.class);
 
     public GameResultDto makeMove(Long sessionId, String nickname, int x, int y) {
+        String lastMoveKey = "lastMoveInSession::" + sessionId;
+        String gameSessionKey = "game::session::" + sessionId;
+
         //Последний ход.
-        String lastMoveFullKey = "lastMoveInSession::" + sessionId;
-        if (redisCacheUtils.hasKey(lastMoveFullKey)) {
-            LastShotResult lastShotResult = redisCacheUtils.getValue(lastMoveFullKey,
+        if (redisCacheUtils.hasKey(lastMoveKey)) {
+            LastShotResult lastShotResult = redisCacheUtils.getValue(lastMoveKey,
                     LastShotResult.class);
             logger.info("Последний ход из кеша: {}", lastShotResult.toString());
             if (lastShotResult.getMoveResult().name().equals("MISS")
@@ -48,75 +51,178 @@ public class GameProcessService {
             }
         }
 
-        GameSession gameSession = gameSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Game session is not found!"));
-
-        if (!gameSession.getStatus().equals(GameStatus.IN_PROGRESS)) {
-            throw new RuntimeException("Game is not in progress");
-        }
-
-        Gamer currentPlayer = findPlayerInGame(gameSession, nickname);
-        Gamer opponent = getOpponent(gameSession, currentPlayer);
-        logger.info("Ход игрока {} на ({},{})", nickname, x, y);
-
-        GamingField opponentField = gamingFieldRepository.findByGamerAndGameSession(opponent, gameSession)
-                .orElseThrow(() -> new RuntimeException("Opponent field not found"));
-
-        ShipDistribution distribution = new Gson().fromJson(opponentField.getFieldData(),
-                ShipDistribution.class);
-        String[][] field = distribution.getField();
-
-        logger.info("Выстрел по клетке ({},{}), содержимое: {}", x, y, field[x][y]);
-
-        GameResultDto gameResultDto = gameProcessUtils1.processShot(gameSession,
-                currentPlayer, opponentField, distribution, x, y);
-        LastShotResult lastShotResult = new LastShotResult();
-        lastShotResult.setNickName(nickname);
-        lastShotResult.setMoveResult(gameResultDto.getMoveResultMessage());
-
-        if (redisCacheUtils.hasKey(lastMoveFullKey)) {
-            redisCacheUtils.deleteValue(lastMoveFullKey);
-            cacheLastMove(lastMoveFullKey, lastShotResult);
+        //Поиск сессии КЕШ/БД
+        GameSessionCacheDto gameSessionCacheDto;
+        if (redisCacheUtils.hasKey(gameSessionKey)) {
+            gameSessionCacheDto = redisCacheUtils.getValue(gameSessionKey, GameSessionCacheDto.class);
+            logger.info("Найденная сессия в кеше: {}", gameSessionCacheDto.toString());
         } else {
-            cacheLastMove(lastMoveFullKey, lastShotResult);
+            logger.info("Игровая сессия не найдена в кеше, поиск в БД.");
+            gameSessionCacheDto = loadFromDatabaseAndCache(sessionId);
         }
 
-        return gameResultDto;
+        if (!gameSessionCacheDto.getStatus().toString().equals("IN_PROGRESS")) {
+            throw new RuntimeException("Game is not in progress!");
+        }
+
+        //Определяем оппонента.
+        String opponentNickname = gameSessionCacheDto.getPlayerOneNickname()
+                .equals(nickname) ? gameSessionCacheDto.getPlayerTwoNickname() :
+                gameSessionCacheDto.getPlayerOneNickname();
+        logger.info("Оппонент: {}", opponentNickname);
+
+        //Поле оппонента
+        FieldCacheDto opponentFieldDto = gameSessionCacheDto.getPlayerFields().get(opponentNickname);
+        String[][] opponentField = opponentFieldDto.getField();
+
+        //Обработка хода
+        GameResultDto result = processShot(gameSessionCacheDto, nickname,
+                opponentNickname, opponentField, x, y);
+
+        //Обновление кеша
+        redisCacheUtils.putValue(gameSessionKey, gameSessionCacheDto, ttlForGameObjects);
+        LastShotResult lastShot = new LastShotResult();
+        lastShot.setNickName(nickname);
+        lastShot.setMoveResult(result.getMoveResultMessage());
+        redisCacheUtils.putValue(lastMoveKey, lastShot, ttlForLastMove);
+
+
+        if (result.isGameOver() || result.getMoveResultMessage() == MoveResult.KILL) {
+            saveToDatabase(sessionId, gameSessionCacheDto);
+            // Очищаем кэш после завершения
+            if (result.isGameOver()) {
+                redisCacheUtils.deleteValue(gameSessionKey);
+                redisCacheUtils.deleteValue(lastMoveKey);
+            }
+        }
+        return result;
     }
 
-    /**
-     * Для переключения на следующего игрока в случае промаха
-     * @param fullKey
-     * @param lastShotResult
-     */
-    private void cacheLastMove(String fullKey, LastShotResult lastShotResult) {
-        logger.info("Попытка кеширования последнего хода сессии.");
+    private GameSessionCacheDto loadFromDatabaseAndCache(Long sessionId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        GamingField field1 = gamingFieldRepository.findByGamerAndGameSession(session.getPlayerOne(), session)
+                .orElseThrow(() -> new RuntimeException("Field 1 not found"));
+        GamingField field2 = gamingFieldRepository.findByGamerAndGameSession(session.getPlayerTwo(), session)
+                .orElseThrow(() -> new RuntimeException("Field 2 not found"));
+
+        ShipDistribution dist1 = new Gson().fromJson(field1.getFieldData(), ShipDistribution.class);
+        ShipDistribution dist2 = new Gson().fromJson(field2.getFieldData(), ShipDistribution.class);
+
+        GameSessionCacheDto dto = new GameSessionCacheDto();
+        dto.setSessionId(session.getId());
+        dto.setPlayerOneNickname(session.getPlayerOne().getNickname());
+        dto.setPlayerTwoNickname(session.getPlayerTwo().getNickname());
+        dto.setStatus(session.getStatus());
+        dto.setCreatedAt(session.getCreatedAt());
+        dto.setFinishedAt(session.getFinishedAt());
+        dto.setWinnerNickname(session.getWinner() != null ? session.getWinner().getNickname() : null);
+
+        //nickName: field - такая логика
+        Map<String, FieldCacheDto> fields = new HashMap<>();
+        fields.put(session.getPlayerOne().getNickname(), new FieldCacheDto(field1.getId(), dist1.getField()));
+        fields.put(session.getPlayerTwo().getNickname(), new FieldCacheDto(field2.getId(), dist2.getField()));
+        dto.setPlayerFields(fields);
+
+        logger.info("Сессия из БД: {}", dto.toString());
         try {
-            redisCacheUtils.putValue(fullKey, lastShotResult, ttlForLastMove);
-            logger.info("Последний ход успешно кеширован.");
-        } catch (RuntimeException e) {
-            logger.error(e.getMessage());
+            redisCacheUtils.putValue("game::session::" + sessionId, dto, ttlForGameObjects);
+            logger.info("Сессия была кеширована.");
+        } catch (RuntimeException exception) {
+            logger.error("Проблема кеширования: {}", exception.getMessage());
         }
-
+        return dto;
     }
 
-    private Gamer getOpponent(GameSession gameSession, Gamer currentPlayer) {
-        if (gameSession.getPlayerOne().equals(currentPlayer)) {
-            return gameSession.getPlayerTwo();
+    private GameResultDto processShot(GameSessionCacheDto cacheDto, String nickname,
+                                              String opponentNickname, String[][] field,
+                                              int x, int y) {
+        logger.info("{} шарахнул в ({}, {})", nickname, x, y);
+        if (x < 0 || x >= 10 || y < 0 || y >= 10) {
+            throw new WrongCoordinatesException(x, y);
+        }
+        if ("X".equals(field[x][y]) || "M".equals(field[x][y])) {
+            throw new IllegalStateException("Cell already attacked");
+        }
+
+        if ("*".equals(field[x][y])) {
+            field[x][y] = "X";
+            Set<Point> shipCells = findShipCells(field, x, y);
+            boolean destroyed = shipCells.stream().allMatch(p -> "X".equals(field[p.getX()][p.getY()]));
+
+            if (destroyed) {
+                boolean allDestroyed = isAllShipsDestroyed(field);
+                if (allDestroyed) {
+                    cacheDto.setStatus(GameStatus.FINISHED);
+                    cacheDto.setWinnerNickname(nickname);
+                    cacheDto.setFinishedAt(LocalDateTime.now());
+                    return new GameResultDto(MoveResult.WIN, true, nickname);
+                }
+                return new GameResultDto(MoveResult.KILL, false, null);
+            }
+            return new GameResultDto(MoveResult.HIT, false, null);
         } else {
-            return gameSession.getPlayerOne();
+            field[x][y] = "M";
+            return new GameResultDto(MoveResult.MISS, false, null);
         }
     }
 
-    private Gamer findPlayerInGame(GameSession gameSession, String nickname) {
-        if (gameSession.getPlayerOne().getNickname().equals(nickname)) {
-            return gameSession.getPlayerOne();
-        } else if (gameSession.getPlayerTwo() != null && gameSession.getPlayerTwo().getNickname().equals(nickname)) {
-            return gameSession.getPlayerTwo();
+    private Set<Point> findShipCells(String[][] field, int x, int y) {
+        Set<Point> cells = new HashSet<>();
+        Deque<Point> stack = new ArrayDeque<>();
+        stack.push(new Point(x, y));
+        while (!stack.isEmpty()) {
+            Point p = stack.pop();
+            if (cells.contains(p)) continue;
+            int px = p.getX(), py = p.getY();
+            if (px >= 0 && px < 10 && py >= 0 && py < 10 &&
+                    ("*".equals(field[px][py]) || "X".equals(field[px][py]))) {
+                cells.add(p);
+                stack.push(new Point(px+1, py));
+                stack.push(new Point(px-1, py));
+                stack.push(new Point(px, py+1));
+                stack.push(new Point(px, py-1));
+            }
         }
-        throw new RuntimeException("Player not found in this game session");
+        return cells;
     }
 
-    //TODO добавить, чтобы переключалось на другого игрока в случае промаха
+    private boolean isAllShipsDestroyed(String[][] field) {
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+                if ("*".equals(field[i][j])) return false;
+            }
+        }
+        return true;
+    }
+
+    private void saveToDatabase(Long sessionId, GameSessionCacheDto cacheDto) {
+        GameSession session = gameSessionRepository.findById(sessionId).orElseThrow();
+
+        // Обновляем статус и победителя
+        session.setStatus(cacheDto.getStatus());
+        session.setFinishedAt(cacheDto.getFinishedAt());
+        if (cacheDto.getWinnerNickname() != null) {
+            Gamer winner = session.getPlayerOne().getNickname().equals(cacheDto.getWinnerNickname()) ?
+                    session.getPlayerOne() : session.getPlayerTwo();
+            session.setWinner(winner);
+        }
+
+        // Сохраняем обновлённые поля
+        for (Map.Entry<String, FieldCacheDto> entry : cacheDto.getPlayerFields().entrySet()) {
+            Gamer player = session.getPlayerOne().getNickname().equals(entry.getKey()) ?
+                    session.getPlayerOne() : session.getPlayerTwo();
+            GamingField field = gamingFieldRepository.findByGamerAndGameSession(player, session).orElseThrow();
+            ShipDistribution dist = new ShipDistribution();
+            dist.setField(entry.getValue().getField());
+            field.setFieldData(new Gson().toJson(dist));
+            gamingFieldRepository.save(field);
+        }
+
+        // Сохраняем сессию только если игра закончилась
+        if (cacheDto.getStatus() == GameStatus.FINISHED) {
+            gameSessionRepository.save(session);
+        }
+    }
 
 }

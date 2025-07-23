@@ -84,7 +84,7 @@ public class GameSetupService {
         field.setGameSession(gameSession);
         field.setFieldData("{}");
         gamingFieldRepository.save(field);
-
+        logger.info("Игрок {} успешно подключился к игровой сессии с id {}", nickname, sessionId);
         return gameSession;
     }
 

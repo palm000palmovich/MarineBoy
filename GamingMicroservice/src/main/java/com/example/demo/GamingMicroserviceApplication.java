@@ -13,7 +13,6 @@ public class GamingMicroserviceApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(GamingMicroserviceApplication.class, args);
 
-		//TODO добавить логику для геймплея.
 		//TODO подружить все с кафкой.
 	}
 

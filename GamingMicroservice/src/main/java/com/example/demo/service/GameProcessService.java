@@ -13,7 +13,6 @@ import com.example.demo.model.GamingField;
 import com.example.demo.repository.GameSessionRepository;
 import com.example.demo.repository.GamingFieldRepository;
 import com.google.gson.Gson;
-import jdk.jfr.Experimental;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,14 +29,17 @@ public class GameProcessService {
     private final RedisCacheUtils redisCacheUtils;
 
     @Value("${spring.cache.redis.verySimpleShit.time-to-lived}")
-    private short ttlForVerySimpleShit;
+    private short ttlForLastMove;
+    @Value("${spring.cache.redis.simpleShit.time-to-lived}")
+    private Long ttlForGameObjects;
 
     private Logger logger = LoggerFactory.getLogger(GameProcessService.class);
 
     public GameResultDto makeMove(Long sessionId, String nickname, int x, int y) {
-        String fullKey = "lastMoveInSession::" + sessionId;
-        if (redisCacheUtils.hasKey(fullKey)) {
-            LastShotResult lastShotResult = redisCacheUtils.getValue(fullKey,
+        //Последний ход.
+        String lastMoveFullKey = "lastMoveInSession::" + sessionId;
+        if (redisCacheUtils.hasKey(lastMoveFullKey)) {
+            LastShotResult lastShotResult = redisCacheUtils.getValue(lastMoveFullKey,
                     LastShotResult.class);
             logger.info("Последний ход из кеша: {}", lastShotResult.toString());
             if (lastShotResult.getMoveResult().name().equals("MISS")
@@ -46,15 +48,14 @@ public class GameProcessService {
             }
         }
 
-
         GameSession gameSession = gameSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Game session not found"));
+                .orElseThrow(() -> new RuntimeException("Game session is not found!"));
 
         if (!gameSession.getStatus().equals(GameStatus.IN_PROGRESS)) {
             throw new RuntimeException("Game is not in progress");
         }
 
-        Gamer currentPlayer = findPlayerInGame(gameSession, nickname); //TODO кеш
+        Gamer currentPlayer = findPlayerInGame(gameSession, nickname);
         Gamer opponent = getOpponent(gameSession, currentPlayer);
         logger.info("Ход игрока {} на ({},{})", nickname, x, y);
 
@@ -73,11 +74,11 @@ public class GameProcessService {
         lastShotResult.setNickName(nickname);
         lastShotResult.setMoveResult(gameResultDto.getMoveResultMessage());
 
-        if (redisCacheUtils.hasKey(fullKey)) {
-            redisCacheUtils.deleteValue(fullKey);
-            cacheLastMove(fullKey, lastShotResult);
+        if (redisCacheUtils.hasKey(lastMoveFullKey)) {
+            redisCacheUtils.deleteValue(lastMoveFullKey);
+            cacheLastMove(lastMoveFullKey, lastShotResult);
         } else {
-            cacheLastMove(fullKey, lastShotResult);
+            cacheLastMove(lastMoveFullKey, lastShotResult);
         }
 
         return gameResultDto;
@@ -91,7 +92,7 @@ public class GameProcessService {
     private void cacheLastMove(String fullKey, LastShotResult lastShotResult) {
         logger.info("Попытка кеширования последнего хода сессии.");
         try {
-            redisCacheUtils.putValue(fullKey, lastShotResult, ttlForVerySimpleShit);
+            redisCacheUtils.putValue(fullKey, lastShotResult, ttlForLastMove);
             logger.info("Последний ход успешно кеширован.");
         } catch (RuntimeException e) {
             logger.error(e.getMessage());

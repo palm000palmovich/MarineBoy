@@ -5,9 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class GameMoveDto {
+@NoArgsConstructor
+public class MoveMessage {
     private Long sessionId;
     private String nickName;
     private int x;

@@ -11,6 +11,7 @@ import com.example.demo.model.GamingField;
 import com.example.demo.repository.GameSessionRepository;
 import com.example.demo.repository.GamingFieldRepository;
 import com.google.gson.Gson;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ public class GameProcessUtils {
 
     private final Logger logger = LoggerFactory.getLogger(GameProcessUtils.class);
 
+    @Transactional
     public GameResultDto processShot(GameSession gameSession, Gamer currentPlayer,
                                      GamingField opponentField, ShipDistribution distribution,
                                      int x, int y) {

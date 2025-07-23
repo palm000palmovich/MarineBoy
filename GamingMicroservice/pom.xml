@@ -115,6 +115,18 @@
 			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
 
+		<dependency>
+			<groupId>com.fatboyindustrial.gson-javatime-serialisers</groupId>
+			<artifactId>gson-javatime-serialisers</artifactId>
+			<version>1.1.1</version>
+		</dependency>
+
+		<!-- Kafka -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<build>

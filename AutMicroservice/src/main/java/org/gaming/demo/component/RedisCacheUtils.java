@@ -3,6 +3,7 @@ package org.gaming.demo.component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -11,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class RedisCacheUtils {
     private final RedisTemplate<String, Object> redisTemplate;
     private Logger logger = LoggerFactory.getLogger(RedisCacheUtils.class);

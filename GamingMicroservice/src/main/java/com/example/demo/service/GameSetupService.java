@@ -1,5 +1,8 @@
 package com.example.demo.service;
 
+import com.example.demo.component.RedisCacheUtils;
+import com.example.demo.dto.FieldCacheDto;
+import com.example.demo.dto.GameSessionCacheDto;
 import com.example.demo.dto.ShipDistribution;
 import com.example.demo.enums.GameStatus;
 import com.example.demo.enums.GameType;
@@ -15,10 +18,13 @@ import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -27,6 +33,10 @@ public class GameSetupService {
     private final GamerRepository gamerRepository;
     private final GameSessionRepository gameSessionRepository;
     private final GamingFieldRepository gamingFieldRepository;
+    private final RedisCacheUtils redisCacheUtils;
+
+    @Value("${spring.cache.redis.simpleShit.time-to-lived}")
+    private Long ttlForGameObjects;
 
     private Logger logger = LoggerFactory.getLogger(GameSetupService.class);
 
@@ -42,7 +52,7 @@ public class GameSetupService {
         gameSession.setType(type);
         gameSession.setStatus(GameStatus.WAITING_FOR_PLAYER);
         gameSession.setCreatedAt(LocalDateTime.now());
-        GameSession savedSession = gameSessionRepository.save(gameSession); //TODO еще добавляю в кеш
+        GameSession savedSession = gameSessionRepository.save(gameSession);
         logger.info("Новая игровая сессия успешно создана.");
 
         /**
@@ -61,7 +71,7 @@ public class GameSetupService {
         logger.info("Попытка присоединения к игровой сессии: sessId {}, " +
                 "nickName {}", sessionId, nickname);
         GameSession gameSession = gameSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new SessionNotFoundException(sessionId)); //TODO проверяю кеш сперва
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
         logger.info("Найденная сессия: {}", gameSession.toString());
         if (gameSession.getPlayerTwo() != null ||
@@ -69,7 +79,7 @@ public class GameSetupService {
             throw new RuntimeException("Игровая сессия уже заполнена!");
         }
 
-        Gamer gamer = gamerRepository.findByNickname(nickname)    //TODO кеш
+        Gamer gamer = gamerRepository.findByNickname(nickname)
                 .orElseThrow(() -> new UserNameNotFoundException(nickname));
 
         gameSession.setPlayerTwo(gamer);

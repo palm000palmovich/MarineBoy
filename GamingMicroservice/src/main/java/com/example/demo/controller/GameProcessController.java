@@ -24,7 +24,6 @@ public class GameProcessController {
                                                   @PathVariable("x") int x,
                                                   @PathVariable("y") int y) {
         try {
-            //TODO сюда кафку.
             return ResponseEntity.ok(gameProcessService.makeMove(sessId, nickName, x, y));
         } catch (RuntimeException exep) {
             logger.error(exep.getMessage());

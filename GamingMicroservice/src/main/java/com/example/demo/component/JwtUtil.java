@@ -1,10 +1,9 @@
-package org.gaming.demo.component;
-
+package com.example.demo.component;
 
 import io.jsonwebtoken.*;
-import org.gaming.demo.model.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.util.Date;
 import java.util.function.Function;
 
@@ -37,27 +36,21 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(User user) {
-        return Jwts.builder()
-                .setSubject(user.getUsername())
-                .claim("role", user.getRole().name())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
-                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
-                .compact();
-    }
-
     public Boolean validateToken(String token, String username) {
         final String extractedUsername = extractUsername(token);
         return (extractedUsername.equals(username) && !isTokenExpired(token));
     }
 
-    public String generateServiceToken() {
-        return Jwts.builder()
-                .setSubject("service-account")
-                .claim("scope", "service")
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION)) //10 дней
-                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
-                .compact();
+    public Boolean validateServiceToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token);
+            return true;
+        } catch (JwtException e) {
+            return false;
+        }
     }
 
+    public String extractSubject(String token) {
+        return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody().getSubject();
+    }
 }

@@ -203,7 +203,7 @@ public class GameProcessService {
         session.setStatus(cacheDto.getStatus());
         session.setFinishedAt(cacheDto.getFinishedAt());
         if (cacheDto.getWinnerNickname() != null) {
-            Gamer winner = session.getPlayerOne().getNickname().equals(cacheDto.getWinnerNickname()) ?
+            Gamer winner = session.getPlayerOne().getNickname( ).equals(cacheDto.getWinnerNickname()) ?
                     session.getPlayerOne() : session.getPlayerTwo();
             session.setWinner(winner);
         }

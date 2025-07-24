@@ -32,3 +32,6 @@ CREATE TABLE gaming_fields (
 --changeset IvanTyapkin:4
 CREATE INDEX user_nickname_index ON gamers (nickname);
 CREATE INDEX game_session_status_index ON game_sessions (status);
+
+--changeset IvanTyapkin:5
+CREATE INDEX game_session_status_and_type_index ON game_sessions (status, type);

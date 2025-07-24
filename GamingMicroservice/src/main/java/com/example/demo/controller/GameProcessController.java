@@ -6,6 +6,7 @@ import com.example.demo.service.GameProcessService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -20,9 +21,10 @@ public class GameProcessController {
 
     @PostMapping(path = "/make-move/{sessionId}/{nickName}/{x}/{y}")
     public ResponseEntity<GameResultDto> makeMove(@PathVariable("sessionId") Long sessId,
-                                                  @PathVariable("nickName")  String nickName,
+                                                  Authentication authentication,
                                                   @PathVariable("x") int x,
                                                   @PathVariable("y") int y) {
+        String nickName = authentication.getName();
         try {
             return ResponseEntity.ok(gameProcessService.makeMove(sessId, nickName, x, y));
         } catch (RuntimeException exep) {

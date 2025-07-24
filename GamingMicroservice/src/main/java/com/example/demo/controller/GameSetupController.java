@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,14 +22,16 @@ public class GameSetupController {
     private Logger logger = LoggerFactory.getLogger(GameSetupController.class);
 
     @PostMapping("/create-GameSession")
-    public ResponseEntity<GameSession> createGame(@RequestParam String nickname, @RequestParam GameType type) {
+    public ResponseEntity<GameSession> createGame(Authentication authentication, @RequestParam GameType type) {
+        String nickname = authentication.getName();
         return ResponseEntity
                 .ok(gameService.createGame(nickname, type));
     }
 
     @PostMapping("/{sessionId}/join")
-    public ResponseEntity<GameSession> joinGame(@PathVariable Long sessionId,
-                                                @RequestParam String nickname) {
+    public ResponseEntity<GameSession> joinGame(@PathVariable("sessionId") Long sessionId,
+                                                Authentication authentication) {
+        String nickname = authentication.getName();
         try {
             return ResponseEntity
                     .ok(gameService.joinGame(sessionId, nickname));
@@ -40,8 +43,9 @@ public class GameSetupController {
 
     @PostMapping("/{sessionId}/create-Field")
     public ResponseEntity<?> setupField(@PathVariable Long sessionId,
-                                        @RequestParam String nickname,
+                                        Authentication authentication,
                                         @ValidationField @RequestBody ShipDistribution shipDistribution) {
+        String nickname = authentication.getName();
         gameService.setupField(sessionId, nickname, shipDistribution);
         return ResponseEntity.ok().build();
     }

@@ -2,6 +2,7 @@ package com.example.demo.configuration;
 
 import com.example.demo.component.JwtFilter;
 import com.example.demo.component.JwtUtil;
+import com.example.demo.service.GamerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,9 +29,13 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/saveevas/**").authenticated()
-                        .anyRequest().denyAll());
-        //.anyRequest().authenticated();
+                        .anyRequest().authenticated());
 
         return http.build();
+    }
+
+    @Bean
+    public JwtFilter jwtFilter(JwtUtil jwtUtil, GamerService gamerService) {
+        return new JwtFilter(jwtUtil, gamerService);
     }
 }

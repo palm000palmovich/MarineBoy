@@ -1,8 +1,9 @@
-package org.gaming.demo.confuguration;
+package com.example.demo.configuration;
 
+import com.example.demo.component.JwtFilter;
+import com.example.demo.component.JwtUtil;
+import com.example.demo.service.GamerService;
 import lombok.RequiredArgsConstructor;
-import org.gaming.demo.component.JwtFilter;
-import org.gaming.demo.component.JwtUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,33 +21,21 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final UserDetailsService userDetailsService;
-
-    @Bean
-    public AuthenticationManager authenticationManager(PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
-        authenticationProvider.setUserDetailsService(userDetailsService);
-        authenticationProvider.setPasswordEncoder(passwordEncoder);
-
-        return new ProviderManager(authenticationProvider);
-    }
-
-    @Bean
-    public JwtFilter jwtFilter(JwtUtil jwtUtil) {
-        return new JwtFilter(jwtUtil, userDetailsService);
-    }
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/register").permitAll()
+                        .requestMatchers("/saveevas/**").authenticated()
                         .anyRequest().authenticated());
 
         return http.build();
+    }
+
+    @Bean
+    public JwtFilter jwtFilter(JwtUtil jwtUtil, GamerService gamerService) {
+        return new JwtFilter(jwtUtil, gamerService);
     }
 }

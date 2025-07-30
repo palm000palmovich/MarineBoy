@@ -116,6 +116,11 @@
 		</dependency>
 
 <!--		Общие классы-->
+		<dependency>
+			<groupId>gorb.vars</groupId>
+			<artifactId>CommonVariables</artifactId>
+			<version>1.0.0</version>
+		</dependency>
 
 	</dependencies>
 

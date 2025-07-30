@@ -1,7 +1,5 @@
 package org.gaming.demo.service;
 
-import lombok.AllArgsConstructor;
-
 import lombok.RequiredArgsConstructor;
 import org.gaming.demo.component.RedisCacheUtils;
 import org.gaming.demo.dto.RegisterDto;
@@ -11,7 +9,6 @@ import org.gaming.demo.exceptions.UserAlreadyRegisteredException;
 import org.gaming.demo.mappers.UserMapper;
 import org.gaming.demo.model.User;
 import org.gaming.demo.repository.UserRepository;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -19,8 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 
 @Service
 @RequiredArgsConstructor

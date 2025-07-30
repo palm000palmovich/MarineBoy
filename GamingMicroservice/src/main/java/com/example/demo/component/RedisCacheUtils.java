@@ -1,11 +1,10 @@
-package org.gaming.demo.component;
+package com.example.demo.component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;

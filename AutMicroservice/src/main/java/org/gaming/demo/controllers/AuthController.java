@@ -1,15 +1,18 @@
 package org.gaming.demo.controllers;
 
-
+import gorb.vars.dto.NewUserInfoResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.gaming.demo.component.JwtUtil;
 import org.gaming.demo.dto.JwtResponse;
 import org.gaming.demo.dto.LoginDto;
 import org.gaming.demo.dto.RegisterDto;
+import org.gaming.demo.exceptions.SendingToGamingServiceException;
 import org.gaming.demo.exceptions.UserAlreadyRegisteredException;
 import org.gaming.demo.model.User;
+import org.gaming.demo.service.ToGamingMmService;
 import org.gaming.demo.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,6 +31,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    private final ToGamingMmService toGamingMmService;
 
     @PostMapping("/login")
     public ResponseEntity<?> createAuthenticationToken(@Valid @RequestBody LoginDto login) throws Exception {
@@ -42,17 +46,36 @@ public class AuthController {
 
         final User user = userService.loadUserByUsername(login.getUserName());
         final JwtResponse jwtResponse = new JwtResponse(jwtUtil.generateToken(user));
+
         logger.info("Полученный jwt: {}", jwtResponse.toString());
         return ResponseEntity.ok(jwtResponse);
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterDto registerDto) {
+        NewUserInfoResponse response;
         try {
-            return ResponseEntity.ok(userService.registerNewUser(registerDto));
-        } catch (UserAlreadyRegisteredException exception){
-            logger.error(exception.getMessage());
-            return ResponseEntity.badRequest().body(exception.getMessage());
+            response = toGamingMmService.sendUserInfo(registerDto.getUserName());
+            logger.info("Полученный ответ от второго сервиса: {}", response.toString());
+            if (response.isOk()) {
+                try {
+                    return ResponseEntity.ok(userService
+                            .registerNewUser(registerDto)
+                            .toString());
+                } catch (UserAlreadyRegisteredException exception) {
+                    logger.error(exception.getMessage());
+                    return ResponseEntity.badRequest().body(exception.getMessage());
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Проблема сохранения игрового аккаунта");
+            }
+        } catch (SendingToGamingServiceException exep) {
+            logger.error(exep.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Something shit with sending to 2nd service.");
         }
     }
+
+
 }

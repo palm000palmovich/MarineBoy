@@ -47,30 +47,33 @@ public class AuthController {
         final User user = userService.loadUserByUsername(login.getUserName());
         final JwtResponse jwtResponse = new JwtResponse(jwtUtil.generateToken(user));
 
-        NewUserInfoResponse response;
-        try {
-            response = toGamingMmService.sendUserInfo(login.getUserName());
-            logger.info("Полученный ответ от второго сервиса: {}", response.toString());
-        } catch (SendingToGamingServiceException exep) {
-            logger.error(exep.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Something shit with sending to 2nd service.");
-        }
-        if (!response.isOk()) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Проблема сохранения игрового аккаунта");
-        }
         logger.info("Полученный jwt: {}", jwtResponse.toString());
         return ResponseEntity.ok(jwtResponse);
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterDto registerDto) {
+        NewUserInfoResponse response;
         try {
-            return ResponseEntity.ok(userService.registerNewUser(registerDto));
-        } catch (UserAlreadyRegisteredException exception){
-            logger.error(exception.getMessage());
-            return ResponseEntity.badRequest().body(exception.getMessage());
+            response = toGamingMmService.sendUserInfo(registerDto.getUserName());
+            logger.info("Полученный ответ от второго сервиса: {}", response.toString());
+            if (response.isOk()) {
+                try {
+                    return ResponseEntity.ok(userService
+                            .registerNewUser(registerDto)
+                            .toString());
+                } catch (UserAlreadyRegisteredException exception) {
+                    logger.error(exception.getMessage());
+                    return ResponseEntity.badRequest().body(exception.getMessage());
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Проблема сохранения игрового аккаунта");
+            }
+        } catch (SendingToGamingServiceException exep) {
+            logger.error(exep.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Something shit with sending to 2nd service.");
         }
     }
 

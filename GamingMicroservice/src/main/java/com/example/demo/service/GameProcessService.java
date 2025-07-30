@@ -45,9 +45,11 @@ public class GameProcessService {
             LastShotResult lastShotResult = redisCacheUtils.getValue(lastMoveKey,
                     LastShotResult.class);
             logger.info("Последний ход из кеша: {}", lastShotResult.toString());
-            if (lastShotResult.getMoveResult().name().equals("MISS")
-                && lastShotResult.getNickName().equals(nickname)) {
-                throw new UncorrectUserException(nickname);
+            if ((lastShotResult.getMoveResult().name().equals("MISS")   //(последний выстрел - промах
+                && lastShotResult.getNickName().equals(nickname)) //И мазила опять пытается пальнуть)
+                    || (!lastShotResult.getMoveResult().name().equals("MISS") //ИЛИ (последний выстрел - попадание/убийство
+                    && !lastShotResult.getNickName().equals(nickname))) {   //И палит оппонент))
+                throw new UncorrectUserException(nickname);  //WARNING nahoy!
             }
         }
 

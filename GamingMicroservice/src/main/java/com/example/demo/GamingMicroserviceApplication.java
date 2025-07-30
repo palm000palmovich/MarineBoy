@@ -13,7 +13,12 @@ public class GamingMicroserviceApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(GamingMicroserviceApplication.class, args);
 
-		//TODO подружить все с кафкой.
+		//TODO патняца
+		//TODO умыдца
+		//TODO зарядке дэлатт
+		//TODO съесть яйца
+		//TODO пойти работа
+		//TODO леч спать
 	}
 
 }

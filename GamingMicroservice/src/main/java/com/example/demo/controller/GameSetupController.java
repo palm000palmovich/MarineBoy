@@ -56,7 +56,7 @@ public class GameSetupController {
         return ResponseEntity.ok(availableGames);
     }
 
-    @GetMapping(path = "/gamerField/{sessionId}/{nickName}")
+    @GetMapping(path = "/gamerField/{sessionId}")
     public ResponseEntity<ShipDistribution> getGamersField(@PathVariable("sessionId") Long sessionId,
                                                            @PathVariable("nickName") String nickName) {
         try {

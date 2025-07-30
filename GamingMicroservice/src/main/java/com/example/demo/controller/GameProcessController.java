@@ -19,7 +19,7 @@ public class GameProcessController {
     private Logger logger = LoggerFactory.getLogger(GameProcessController.class);
     private final KafkaTemplate<String, MoveMessage> kafkaTemplate;
 
-    @PostMapping(path = "/make-move/{sessionId}/{nickName}/{x}/{y}")
+    @PostMapping(path = "/make-move/{sessionId}/{x}/{y}")
     public ResponseEntity<GameResultDto> makeMove(@PathVariable("sessionId") Long sessId,
                                                   Authentication authentication,
                                                   @PathVariable("x") int x,

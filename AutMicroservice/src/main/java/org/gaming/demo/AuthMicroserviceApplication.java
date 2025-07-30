@@ -10,6 +10,7 @@ public class AuthMicroserviceApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(AuthMicroserviceApplication.class, args);
+
 		//TODO анжуманья
 		//TODO прес качат
 		//TODO бегит
